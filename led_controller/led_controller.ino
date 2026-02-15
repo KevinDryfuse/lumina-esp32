@@ -20,7 +20,7 @@
 // LED Configuration
 // ===================
 #define LED_PIN     5
-#define NUM_LEDS    100
+#define NUM_LEDS    200
 #define LED_TYPE    WS2815
 #define COLOR_ORDER GRB
 
@@ -75,6 +75,32 @@ String getChipId() {
   char idStr[9];
   snprintf(idStr, sizeof(idStr), "%08X", id);
   return String(idStr);
+}
+
+// ===================
+// Status Indicator (LED 0)
+// ===================
+void showStatus(CRGB color) {
+  fill_solid(leds, NUM_LEDS, CRGB::Black);
+  uint8_t pulse = beatsin8(30, 40, 255);
+  for (int i = 0; i < 5; i++) {
+    leds[i] = color;
+    leds[i].fadeToBlackBy(255 - pulse);
+  }
+  FastLED.setBrightness(255);
+  FastLED.show();
+}
+
+void flashGreen() {
+  for (int i = 0; i < 3; i++) {
+    fill_solid(leds, 5, CRGB::Green);
+    FastLED.setBrightness(255);
+    FastLED.show();
+    delay(150);
+    fill_solid(leds, 5, CRGB::Black);
+    FastLED.show();
+    delay(150);
+  }
 }
 
 // ===================
@@ -441,8 +467,8 @@ void connectWiFi() {
   WiFi.begin(wifi_ssid, wifi_password);
 
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+    showStatus(CRGB::Red);
+    delay(20);
   }
 
   Serial.println();
@@ -467,11 +493,18 @@ void connectMqtt() {
       Serial.print("Subscribed to: ");
       Serial.println(TOPIC_SET);
       announceDevice();
+      flashGreen();
     } else {
       Serial.print(" failed (rc=");
       Serial.print(mqtt.state());
       Serial.println("). Retrying in 5 seconds...");
-      delay(5000);
+
+      // Pulse yellow for 5 seconds
+      unsigned long start = millis();
+      while (millis() - start < 5000) {
+        showStatus(CRGB::Yellow);
+        delay(20);
+      }
     }
   }
 }
